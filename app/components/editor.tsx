@@ -23,13 +23,13 @@ const RichTextEditor = ({ onUpdate }: any) => {
         if ((e.ctrlKey || e.metaKey)) {
             switch (e.key) {
                 case KEYCODES.BOLD:
-                    setBold(true);
+                    setBold(!bold);
                     break;
                 case KEYCODES.ITALIC:
-                    setItalic(true);
+                    setItalic(!italic);
                     break;
                 case KEYCODES.UNDERLINE:
-                    setUnderline(true);
+                    setUnderline(!underline);
                     break;
 
                 default:
