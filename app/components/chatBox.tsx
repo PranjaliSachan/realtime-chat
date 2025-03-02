@@ -4,13 +4,35 @@ import RichTextEditor from "./editor";
 
 import * as React from "react";
 
-import { Avatar, Badge, Box, Button, Collapse, CssBaseline, Divider, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, Toolbar, Tooltip, Typography } from "@mui/material";
-
+import {
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Collapse,
+    CssBaseline,
+    Divider,
+    IconButton,
+    List,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    Paper,
+    Stack,
+    Toolbar,
+    Tooltip,
+    Typography,
+    TextField,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle
+} from "@mui/material";
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import { styled, useTheme, Theme, CSSObject } from '@mui/material/styles';
-
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { AddBox, ExpandLess, ExpandMore, PersonAdd } from "@mui/icons-material";
 import MenuIcon from '@mui/icons-material/Menu';
 import ForumIcon from '@mui/icons-material/Forum';
 import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
@@ -28,6 +50,11 @@ const drawerWidth = 240;
 type IChatMessage = {
     user: string;
     message: string;
+}
+
+type IMessageHistory = {
+    channel: string;
+    messages: IChatMessage[],
 }
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -155,6 +182,10 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     const [localChannels, setLocalChannels] = React.useState<string[]>([]);
     // const [localDirectMessages, setLocalDirectMessages] = React.useState<string[]>([]);
     const [receivedMessages, setMessages] = React.useState<any>([]);
+    const [localMessageHistory, updateLocalMessageHistory] = React.useState<IMessageHistory[]>([]);
+
+    const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
+    const [newChannelName, setNewChannelName] = React.useState<string>('');
 
     const mainRef = React.useRef<any>(null);
     const textEditorRef = React.useRef<any>(null);
@@ -173,7 +204,18 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     // };
 
     const { channel, ably } = useChannel(activeChannelName, (message: Message) => {
-        const history = receivedMessages.slice(-199);
+        const localHistory = localMessageHistory.filter((h: IMessageHistory) => h.channel === activeChannelName);
+        let history = [] as IChatMessage[];
+        if (localHistory.length > 0) {
+            history = localHistory[0].messages.slice(-199);
+            localHistory[0].messages.push(message.data);
+        } else {
+            localMessageHistory.push({
+                channel: activeChannelName,
+                messages: [message.data],
+            });
+        }
+        // const history = receivedMessages.slice(-199);
         setMessages([...history, message.data]);
     });
 
@@ -187,6 +229,22 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
 
     const isCurrUser = (val: string) => {
         return val === user?.nickname;
+    }
+
+    const handleUpdateActiveChannel = (ch: string) => {
+        updateActiveChannel(ch);
+        const localHistory = localMessageHistory.filter((h: IMessageHistory) => h.channel === ch);
+        if (localHistory.length > 0) {
+            const history = localHistory[0].messages.slice(-199);
+            setMessages(history);
+        } else {
+            setMessages([]);
+        }
+    }
+
+    const handleCreateNewChannel = (e: any) => {
+        setDialogOpen(false);
+        setLocalChannels([...localChannels, newChannelName]);
     }
 
     React.useEffect(() => {
@@ -251,6 +309,14 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                         sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
                         component="nav"
                     >
+                        <ListItemButton onClick={e => setDialogOpen(true)}>
+                            <ListItemIcon>
+                                <Tooltip title="Create Channel">
+                                    <AddBox />
+                                </Tooltip>
+                            </ListItemIcon>
+                            <ListItemText primary="Create Channel" />
+                        </ListItemButton>
                         <ListItemButton onClick={handleExpandChannels}>
                             <ListItemIcon>
                                 <Tooltip title="Channels">
@@ -263,7 +329,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                         <Collapse in={expandChannels} timeout="auto" unmountOnExit>
                             <List component="div" disablePadding>
                                 {localChannels.map((c, i) => (
-                                    <ListItemButton key={i} onClick={ev => updateActiveChannel(c)} sx={{ pl: 4 }}>
+                                    <ListItemButton key={i} onClick={ev => handleUpdateActiveChannel(c)} sx={{ pl: 4 }}>
                                         <ListItemIcon>
                                             {isCurrUser(c) ? (
                                                 <StyledBadge
@@ -271,7 +337,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                                                     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                                                     variant="dot"
                                                 >
-                                                    <Avatar {...stringAvatar(activeChannelName)} />
+                                                    <Avatar {...stringAvatar(c)} />
                                                 </StyledBadge>
                                             ) : (
                                                 <Avatar {...stringAvatar(c)} />
@@ -350,6 +416,33 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                     </div>
                 </Box>
             </Box>
+
+            <Dialog
+                open={dialogOpen}
+            >
+                <DialogTitle>Create Channel</DialogTitle>
+                <DialogContent sx={{ width: '50vw' }}>
+                    <DialogContentText>
+                        Enter a name for the channel
+                    </DialogContentText>
+                    <TextField
+                        autoFocus
+                        required
+                        margin="dense"
+                        name="email"
+                        label="Channel Name"
+                        type="text"
+                        fullWidth
+                        variant="standard"
+                        value={newChannelName}
+                        onChange={e => setNewChannelName(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={e => setDialogOpen(false)}>Cancel</Button>
+                    <Button type="button" onClick={e => handleCreateNewChannel(e)}>Create</Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }
