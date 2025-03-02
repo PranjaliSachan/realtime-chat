@@ -9,61 +9,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import GroupIcon from '@mui/icons-material/Group';
 import CodeIcon from '@mui/icons-material/Code';
 
-import { useUser } from "@auth0/nextjs-auth0/client";
-
 const Website = () => {
-    const { user, error, isLoading } = useUser();
-
-    if (isLoading) return <div>Loading...</div>;
-
-    if (error) return <div>{error.message}</div>;
-
-    // return (
-    //     <div className="p-10">
-    //         {user ? (
-    //             <div className="flex">
-    //                 {user.picture && (
-    //                     <img
-    //                         src={user.picture}
-    //                         alt={user.name || "img"}
-    //                         width={100}
-    //                         height={100}
-    //                         className="rounded-full mr-4"
-    //                     />
-    //                 )}
-
-    //                 <div>
-    //                     <h2 className="text-2xl font-semibold">Welcome, {user.name}</h2>
-
-    //                     <p className="text-sm font-normal">
-    //                         Email Address: {user.email}
-    //                     </p>
-
-    //                     <a
-    //                         href="/api/auth/logout"
-    //                         className="bg-slate-500 text-white px-5 py-2 rounded-lg hover:bg-slate-600"
-    //                     >
-    //                         Logout
-    //                     </a>
-    //                 </div>
-    //             </div>
-    //         ) : (
-    //             <div>
-    //                 <h1 className="text-2xl font-semibold mb-4">
-    //                     Welcome to Next.js Tutorial
-    //                 </h1>
-
-    //                 <a
-    //                     href="/api/auth/login"
-    //                     className="bg-slate-500 text-white px-5 py-2 rounded-lg hover:bg-slate-600"
-    //                 >
-    //                     Login
-    //                 </a>
-    //             </div>
-    //         )}
-    //     </div>
-    // );
-
     return (
         <div className="v-[100vh] flex flex-col">
             <main className="flex-1 flex-col">
@@ -84,7 +30,7 @@ const Website = () => {
                     </div>
                 </section>
 
-                <section className="py-18">
+                <section className="py-18 bg-black">
                     <Container maxWidth="md">
                         <Typography className='text-zinc-50' variant="h2" component="h2" align="center" gutterBottom>
                             Key Features
@@ -101,7 +47,7 @@ const Website = () => {
                                 <Paper className="p-8 text-center" elevation={3}>
                                     <GroupIcon fontSize="large" color="primary" />
                                     <Typography variant="h6">Channels</Typography>
-                                    <Typography variant="body2">Create groups or chat privately with direct messages.</Typography>
+                                    <Typography variant="body2">Create and share channel link with peers.</Typography>
                                 </Paper>
                             </Grid>
                             <Grid item xs={12} sm={6} md={4}>
@@ -137,7 +83,7 @@ const Website = () => {
                     </Container>
                 </section>
 
-                <section className="py-18">
+                <section className="py-18 bg-black">
                     <Container maxWidth="md">
                         <Typography className='text-zinc-50' variant="h2" component="h2" align="center" gutterBottom>
                             Get Started
@@ -154,7 +100,7 @@ const Website = () => {
                 </section>
             </main>
 
-            <footer className="w-[100%] h-[100px] border-t border-t-zinc-800 flex justify-center items-center">
+            <footer className="w-[100%] h-[100px] bg-black border-t border-t-zinc-800 flex justify-center items-center">
                 <a className='flex justify-center items-center grow text-zinc-400' href="https://github.com/PranjaliSachan" target="_blank" rel="noopener noreferrer">
                     Pranjali Sachan
                 </a>
