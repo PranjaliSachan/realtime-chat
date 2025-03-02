@@ -18,6 +18,8 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LogoutIcon from '@mui/icons-material/Logout';
 
+import { useUser, withPageAuthRequired } from '@auth0/nextjs-auth0/client';
+
 const drawerWidth = 240;
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -131,7 +133,11 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-export default function Chat() {
+const Chat = () => {
+    const { user, isLoading, error } = useUser();
+    if (isLoading) return <div>Loading...</div>;
+    if (error) return <div>{error.message}</div>;
+
     const theme = useTheme();
     const [open, setOpen] = React.useState<boolean>(true);
     const [expandChannels, setExpandChannels] = React.useState<boolean>(true);
@@ -344,3 +350,5 @@ export default function Chat() {
         </>
     );
 }
+
+export default withPageAuthRequired(Chat);
