@@ -42,6 +42,7 @@ const RichTextEditor = ({ onUpdate }: any) => {
         handleFormatting(e);
 
         if (e.key === 'Enter') {
+            e.preventDefault();
             const content = e.target.innerHTML;
             onUpdate(content);
             e.target.innerHTML = '';

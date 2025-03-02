@@ -4,13 +4,35 @@ import RichTextEditor from "./editor";
 
 import * as React from "react";
 
-import { Avatar, Badge, Box, Button, Collapse, CssBaseline, Divider, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, Toolbar, Tooltip, Typography } from "@mui/material";
-
+import {
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Collapse,
+    CssBaseline,
+    Divider,
+    IconButton,
+    List,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    Paper,
+    Stack,
+    Toolbar,
+    Tooltip,
+    Typography,
+    TextField,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle
+} from "@mui/material";
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import { styled, useTheme, Theme, CSSObject } from '@mui/material/styles';
-
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { AddBox, ExpandLess, ExpandMore, PersonAdd } from "@mui/icons-material";
 import MenuIcon from '@mui/icons-material/Menu';
 import ForumIcon from '@mui/icons-material/Forum';
 import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
@@ -18,15 +40,21 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LogoutIcon from '@mui/icons-material/Logout';
 
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { UserProfile, useUser } from '@auth0/nextjs-auth0/client';
 
 import { useChannel } from 'ably/react';
+import { Message } from "ably";
 
 const drawerWidth = 240;
 
 type IChatMessage = {
     user: string;
     message: string;
+}
+
+type IMessageHistory = {
+    channel: string;
+    messages: IChatMessage[],
 }
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -140,60 +168,95 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
-    const { user, isLoading, error } = useUser();
-    if (isLoading) return <div>Loading...</div>;
-    if (error) return <div>{error.message}</div>;
+const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
+    {
+        user: UserProfile | undefined, activeChannelName: string, updateActiveChannel: any
+    }) => {
 
     const theme = useTheme();
     const [open, setOpen] = React.useState<boolean>(true);
     const [expandChannels, setExpandChannels] = React.useState<boolean>(true);
-    const [expandDirectMessages, setDirectMessages] = React.useState<boolean>(true);
+    // const [expandDirectMessages, setDirectMessages] = React.useState<boolean>(true);
     const [mainWidth, setMainWidth] = React.useState<number>(0);
 
     const [localChannels, setLocalChannels] = React.useState<string[]>([]);
-    const [localDirectMessages, setLocalDirectMessages] = React.useState<string[]>([]);
+    // const [localDirectMessages, setLocalDirectMessages] = React.useState<string[]>([]);
     const [receivedMessages, setMessages] = React.useState<any>([]);
+    const [localMessageHistory, updateLocalMessageHistory] = React.useState<IMessageHistory[]>([]);
+
+    const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
+    const [newChannelName, setNewChannelName] = React.useState<string>('');
 
     const mainRef = React.useRef<any>(null);
     const textEditorRef = React.useRef<any>(null);
 
     const handleDrawerToggle = () => {
         setOpen(!open);
-        handleExpandChannels();
-        handleDirectMessages();
+        setExpandChannels(false);
     };
 
     const handleExpandChannels = () => {
         setExpandChannels(!expandChannels);
     };
 
-    const handleDirectMessages = () => {
-        setDirectMessages(!expandDirectMessages);
-    };
+    // const handleDirectMessages = () => {
+    //     setDirectMessages(!expandDirectMessages);
+    // };
 
-    const { channel, ably } = useChannel(activeChannelName, (msg: any) => {
-        const history = receivedMessages.slice(-199);
-        const formatMessage = {
-            user: user?.nickname,
-            message: msg
-        } as IChatMessage;
-        setMessages([...history, formatMessage]);
+    const { channel, ably } = useChannel(activeChannelName, (message: Message) => {
+        const localHistory = localMessageHistory.filter((h: IMessageHistory) => h.channel === activeChannelName);
+        let history = [] as IChatMessage[];
+        if (localHistory.length > 0) {
+            history = localHistory[0].messages.slice(-199);
+            localHistory[0].messages.push(message.data);
+        } else {
+            localMessageHistory.push({
+                channel: activeChannelName,
+                messages: [message.data],
+            });
+        }
+        // const history = receivedMessages.slice(-199);
+        setMessages([...history, message.data]);
     });
 
     const sendMessage = (val: string) => {
-        console.log(`Send Message: ${activeChannelName}`);
         const msg = {
-            user: user?.name,
-            message: val,
+            user: user?.nickname,
+            message: val.trim(),
         } as IChatMessage;
         channel.publish({ name: activeChannelName, data: msg });
+    }
+
+    const isCurrUser = (val: string) => {
+        return val === user?.nickname;
+    }
+
+    const handleUpdateActiveChannel = (ch: string) => {
+        updateActiveChannel(ch);
+        const localHistory = localMessageHistory.filter((h: IMessageHistory) => h.channel === ch);
+        if (localHistory.length > 0) {
+            const history = localHistory[0].messages.slice(-199);
+            setMessages(history);
+        } else {
+            setMessages([]);
+        }
+    }
+
+    const handleCreateNewChannel = (e: any) => {
+        setDialogOpen(false);
+        setLocalChannels([...localChannels, newChannelName]);
     }
 
     React.useEffect(() => {
         setMainWidth(mainRef.current.offsetWidth);
         textEditorRef.current.style.width = `${mainWidth}px`;
     }, [mainRef.current]);
+
+    React.useEffect(() => {
+        if (user && user.nickname) {
+            setLocalChannels([...localChannels, user?.nickname])
+        }
+    }, [user])
 
     return (
         <>
@@ -219,11 +282,13 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                                 <MenuIcon />
                             </IconButton>
                             <div className="ml-auto">
-                                <Tooltip title="Logout">
-                                    <IconButton edge="end">
-                                        <LogoutIcon />
-                                    </IconButton>
-                                </Tooltip>
+                                <a href="/api/auth/logout">
+                                    <Tooltip title="Logout">
+                                        <IconButton edge="end">
+                                            <LogoutIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                </a>
                             </div>
                         </div>
                     </Toolbar>
@@ -232,16 +297,7 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                     <DrawerHeader>
                         <Paper elevation={0}>
                             <div className="flex flex-row justify-items-start items-center">
-                                <StyledBadge
-                                    overlap="circular"
-                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                    variant="dot"
-                                >
-                                    <Avatar {...stringAvatar('Mike Jackson')} />
-                                </StyledBadge>
-                                <div className="ml-3">
-                                    <Typography variant="h6">Mike Jackson</Typography>
-                                </div>
+                                <Typography variant="h5" component="h5">Real-Time Chat</Typography>
                             </div>
                         </Paper>
                         <IconButton onClick={handleDrawerToggle}>
@@ -253,6 +309,14 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                         sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
                         component="nav"
                     >
+                        <ListItemButton onClick={e => setDialogOpen(true)}>
+                            <ListItemIcon>
+                                <Tooltip title="Create Channel">
+                                    <AddBox />
+                                </Tooltip>
+                            </ListItemIcon>
+                            <ListItemText primary="Create Channel" />
+                        </ListItemButton>
                         <ListItemButton onClick={handleExpandChannels}>
                             <ListItemIcon>
                                 <Tooltip title="Channels">
@@ -264,10 +328,20 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                         </ListItemButton>
                         <Collapse in={expandChannels} timeout="auto" unmountOnExit>
                             <List component="div" disablePadding>
-                                {localChannels.map((c) => (
-                                    <ListItemButton onClick={ev => updateActiveChannel(c)} sx={{ pl: 4 }}>
+                                {localChannels.map((c, i) => (
+                                    <ListItemButton key={i} onClick={ev => handleUpdateActiveChannel(c)} sx={{ pl: 4 }}>
                                         <ListItemIcon>
-                                            <Avatar {...stringAvatar(c)} />
+                                            {isCurrUser(c) ? (
+                                                <StyledBadge
+                                                    overlap="circular"
+                                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                                    variant="dot"
+                                                >
+                                                    <Avatar {...stringAvatar(c)} />
+                                                </StyledBadge>
+                                            ) : (
+                                                <Avatar {...stringAvatar(c)} />
+                                            )}
                                         </ListItemIcon>
                                         <ListItemText primary={c} />
                                     </ListItemButton>
@@ -275,7 +349,7 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                             </List>
                         </Collapse>
 
-                        <ListItemButton onClick={handleDirectMessages}>
+                        {/* <ListItemButton onClick={handleDirectMessages}>
                             <ListItemIcon>
                                 <Tooltip title="Direct Messages">
                                     <ChatBubbleOutline />
@@ -295,60 +369,27 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                                     </ListItemButton>
                                 ))}
                             </List>
-                        </Collapse>
+                        </Collapse> */}
+
                     </List>
-                    {open && (
-                        <>
-                            <div className="flex flex-row justify-items-start items-end absolute bottom-5">
-                                <Typography
-                                    variant="h5"
-                                    noWrap
-                                    component="a"
-                                    href="#app-bar-with-responsive-menu"
-                                    sx={{
-                                        ml: 2,
-                                        display: { xs: 'flex', md: 'none' },
-                                        flexGrow: 1,
-                                        fontFamily: 'monospace',
-                                        fontWeight: 700,
-                                        letterSpacing: '.3rem',
-                                        color: 'black',
-                                        textDecoration: 'none',
-                                    }}
-                                >
-                                    TAUT
-                                </Typography>
-                                <Typography
-                                    noWrap
-                                    component="a"
-                                    href="#app-bar-with-responsive-menu"
-                                    sx={{
-                                        fontSize: '1rem',
-                                        fontFamily: 'monospace',
-                                        fontWeight: 500,
-                                        color: 'black',
-                                        textDecoration: 'none',
-                                    }}
-                                >
-                                    Messenger
-                                </Typography>
-                            </div>
-                        </>
-                    )}
                 </Drawer>
                 <Box component="main" ref={mainRef} sx={{ flexGrow: 1, mx: 2, mt: 3, px: 0 }}>
                     {/* Header */}
                     <Toolbar className="border-b border-b-zinc-200" sx={{ mt: 6 }}>
                         <div className="w-full py-4 flex flex-row justify-items-start items-center">
-                            <StyledBadge
-                                overlap="circular"
-                                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                variant="dot"
-                            >
-                                <Avatar {...stringAvatar('Mike Jackson')} />
-                            </StyledBadge>
+                            {isCurrUser(activeChannelName) ? (
+                                <StyledBadge
+                                    overlap="circular"
+                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                    variant="dot"
+                                >
+                                    <Avatar {...stringAvatar(activeChannelName)} />
+                                </StyledBadge>
+                            ) : (
+                                <Avatar {...stringAvatar(activeChannelName)} />
+                            )}
                             <div className="ml-3">
-                                <Typography variant="h6">Mike Jackson</Typography>
+                                <Typography variant="h6">{activeChannelName}</Typography>
                             </div>
                         </div>
                     </Toolbar>
@@ -359,10 +400,10 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                                 <Paper elevation={0}>
                                     <div className="w-full flex flex-row justify-items-start items-center">
                                         <div>
-                                            <Avatar {...stringAvatar(m.data.user)} />
+                                            <Avatar {...stringAvatar(m.user)} />
                                         </div>
                                         <div className="ml-3">
-                                            <Typography component="div" dangerouslySetInnerHTML={{ __html: m.data.message }} />
+                                            <Typography component="div" dangerouslySetInnerHTML={{ __html: m.message }} />
                                         </div>
                                     </div>
                                 </Paper>
@@ -375,6 +416,33 @@ const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
                     </div>
                 </Box>
             </Box>
+
+            <Dialog
+                open={dialogOpen}
+            >
+                <DialogTitle>Create Channel</DialogTitle>
+                <DialogContent sx={{ width: '50vw' }}>
+                    <DialogContentText>
+                        Enter a name for the channel
+                    </DialogContentText>
+                    <TextField
+                        autoFocus
+                        required
+                        margin="dense"
+                        name="email"
+                        label="Channel Name"
+                        type="text"
+                        fullWidth
+                        variant="standard"
+                        value={newChannelName}
+                        onChange={e => setNewChannelName(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={e => setDialogOpen(false)}>Cancel</Button>
+                    <Button type="button" onClick={e => handleCreateNewChannel(e)}>Create</Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }
