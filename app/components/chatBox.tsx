@@ -140,7 +140,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
     },
 }));
 
-const ChatBox = () => {
+const ChatBox = ({ activeChannelName, updateActiveChannel }: any) => {
     const { user, isLoading, error } = useUser();
     if (isLoading) return <div>Loading...</div>;
     if (error) return <div>{error.message}</div>;
@@ -150,12 +150,10 @@ const ChatBox = () => {
     const [expandChannels, setExpandChannels] = React.useState<boolean>(true);
     const [expandDirectMessages, setDirectMessages] = React.useState<boolean>(true);
     const [mainWidth, setMainWidth] = React.useState<number>(0);
-    // const [messages, setMessages] = React.useState<string[]>([]);
 
     const [localChannels, setLocalChannels] = React.useState<string[]>([]);
     const [localDirectMessages, setLocalDirectMessages] = React.useState<string[]>([]);
     const [receivedMessages, setMessages] = React.useState<any>([]);
-    const [activeChannel, setActiveChannel] = React.useState<string>('test');
 
     const mainRef = React.useRef<any>(null);
     const textEditorRef = React.useRef<any>(null);
@@ -174,7 +172,7 @@ const ChatBox = () => {
         setDirectMessages(!expandDirectMessages);
     };
 
-    const { channel, ably } = useChannel(activeChannel, (msg: any) => {
+    const { channel, ably } = useChannel(activeChannelName, (msg: any) => {
         const history = receivedMessages.slice(-199);
         const formatMessage = {
             user: user?.nickname,
@@ -184,12 +182,12 @@ const ChatBox = () => {
     });
 
     const sendMessage = (val: string) => {
-        console.log(`Send Message: ${activeChannel}`);
+        console.log(`Send Message: ${activeChannelName}`);
         const msg = {
             user: user?.name,
             message: val,
         } as IChatMessage;
-        channel.publish({ name: activeChannel, data: msg });
+        channel.publish({ name: activeChannelName, data: msg });
     }
 
     React.useEffect(() => {
@@ -267,7 +265,7 @@ const ChatBox = () => {
                         <Collapse in={expandChannels} timeout="auto" unmountOnExit>
                             <List component="div" disablePadding>
                                 {localChannels.map((c) => (
-                                    <ListItemButton onClick={ev => setActiveChannel(c)} sx={{ pl: 4 }}>
+                                    <ListItemButton onClick={ev => updateActiveChannel(c)} sx={{ pl: 4 }}>
                                         <ListItemIcon>
                                             <Avatar {...stringAvatar(c)} />
                                         </ListItemIcon>
@@ -289,7 +287,7 @@ const ChatBox = () => {
                         <Collapse in={expandDirectMessages} timeout="auto" unmountOnExit>
                             <List component="div" disablePadding>
                                 {localDirectMessages.map((dm) => (
-                                    <ListItemButton onClick={ev => setActiveChannel(dm)} sx={{ pl: 4 }}>
+                                    <ListItemButton onClick={ev => updateActiveChannel(dm)} sx={{ pl: 4 }}>
                                         <ListItemIcon>
                                             <Avatar {...stringAvatar(dm)} />
                                         </ListItemIcon>
