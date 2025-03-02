@@ -11,7 +11,7 @@ import CodeIcon from '@mui/icons-material/Code';
 
 import { useUser } from "@auth0/nextjs-auth0/client";
 
-const Home = () => {
+const Website = () => {
     const { user, error, isLoading } = useUser();
 
     if (isLoading) return <div>Loading...</div>;
@@ -163,4 +163,4 @@ const Home = () => {
     );
 };
 
-export default Home;
+export default Website;
