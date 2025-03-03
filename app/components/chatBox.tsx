@@ -267,10 +267,17 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
 
     const shareChannelLinkAndCopyToClipBoard = async () => {
         setLinkPopoverOpen(false);
-        await navigator.clipboard.writeText(window.location.href + `?channel=${activeChannelName}&referrer=${user?.nickname}`);
-        handleSnackbarOpen('Channel link copied to clipboard!');
         const errorMessage = 'Unable to share link at this moment. The link has been copied to clipboard! Please share the link manually or try again later!';
         try {
+            let host = '';
+            if (window.location.href.indexOf('?') >= 0) {
+                host = window.location.href.split('?')[0];
+            } else {
+                host = window.location.href;
+            }
+            await navigator.clipboard.writeText(host + `?channel=${activeChannelName}&referrer=${user?.nickname}`);
+            handleSnackbarOpen('Channel link copied to clipboard!');
+
             const response = await fetch('/api/resend', {
                 method: 'POST',
                 headers: {
@@ -280,7 +287,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                     from: user?.nickname,
                     to: shareLinkEmailAddress,
                     channel: activeChannelName,
-                    channelLink: window.location.href + `?channel=${activeChannelName}&referrer=${user?.nickname}`
+                    channelLink: host + `?channel=${activeChannelName}&referrer=${user?.nickname}`
                 }),
             });
 
