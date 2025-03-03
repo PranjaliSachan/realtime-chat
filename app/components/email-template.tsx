@@ -8,7 +8,7 @@ interface EmailTemplateProps {
 }
 
 export const EmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({
-    from, to, channel, channelLink
+    from, channel, channelLink
 }) => (
     <div>
         <div><span>Hi!</span></div>

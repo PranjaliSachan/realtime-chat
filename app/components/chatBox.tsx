@@ -1,3 +1,6 @@
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+/* eslint-disable  @typescript-eslint/no-unused-vars */
+/* eslint-disable  @next/next/no-html-link-for-pages */
 "use client"
 import stringAvatar from "../helpers/avatar";
 import RichTextEditor from "./editor";
@@ -35,15 +38,15 @@ import {
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import { styled, useTheme, Theme, CSSObject } from '@mui/material/styles';
-import { AddBox, ExpandLess, ExpandMore, Link, Share } from "@mui/icons-material";
+import { AddBox, ExpandLess, ExpandMore, Share } from "@mui/icons-material";
 import MenuIcon from '@mui/icons-material/Menu';
 import ForumIcon from '@mui/icons-material/Forum';
-import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
+// import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LogoutIcon from '@mui/icons-material/Logout';
 
-import { UserProfile, useUser } from '@auth0/nextjs-auth0/client';
+import { UserProfile } from '@auth0/nextjs-auth0/client';
 
 import { useChannel } from 'ably/react';
 import { Message } from "ably";
@@ -186,7 +189,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     const [localChannels, setLocalChannels] = React.useState<string[]>([]);
     // const [localDirectMessages, setLocalDirectMessages] = React.useState<string[]>([]);
     const [receivedMessages, setMessages] = React.useState<any>([]);
-    const [localMessageHistory, updateLocalMessageHistory] = React.useState<IMessageHistory[]>([]);
+    const [localMessageHistory] = React.useState<IMessageHistory[]>([]);
 
     const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
     const [newChannelName, setNewChannelName] = React.useState<string>('');
@@ -216,7 +219,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     //     setDirectMessages(!expandDirectMessages);
     // };
 
-    const { channel, ably } = useChannel(activeChannelName, (message: Message) => {
+    const { channel } = useChannel(activeChannelName, (message: Message) => {
         const localHistory = localMessageHistory.filter((h: IMessageHistory) => h.channel === activeChannelName);
         let history = [] as IChatMessage[];
         if (localHistory.length > 0) {
@@ -255,7 +258,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
         }
     }
 
-    const handleCreateNewChannel = (e: any) => {
+    const handleCreateNewChannel = () => {
         setDialogOpen(false);
         setLocalChannels([...localChannels, newChannelName]);
         handleSnackbarOpen('Channel Created!');
@@ -309,7 +312,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     React.useEffect(() => {
         setMainWidth(mainRef.current.offsetWidth);
         textEditorRef.current.style.width = `${mainWidth}px`;
-    }, [mainRef.current]);
+    }, [mainWidth, mainRef]);
 
     React.useEffect(() => {
         if (user && user.nickname) {
@@ -320,7 +323,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
         if (localChannels.indexOf(activeChannelName) < 0) {
             setLocalChannels([...localChannels, activeChannelName]);
         }
-    }, [user, activeChannelName])
+    }, [user, activeChannelName, localChannels])
 
     return (
         <>
@@ -514,7 +517,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                 </DialogContent>
                 <DialogActions>
                     <Button variant="outlined" onClick={e => setDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" type="button" onClick={e => handleCreateNewChannel(e)}>Create</Button>
+                    <Button variant="contained" type="button" onClick={e => handleCreateNewChannel()}>Create</Button>
                 </DialogActions>
             </Dialog>
 
