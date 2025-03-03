@@ -27,12 +27,15 @@ import {
     DialogActions,
     DialogContent,
     DialogContentText,
-    DialogTitle
+    DialogTitle,
+    Snackbar,
+    SnackbarContent,
+    Popover
 } from "@mui/material";
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import { styled, useTheme, Theme, CSSObject } from '@mui/material/styles';
-import { AddBox, ExpandLess, ExpandMore, PersonAdd } from "@mui/icons-material";
+import { AddBox, ExpandLess, ExpandMore, Link, Share } from "@mui/icons-material";
 import MenuIcon from '@mui/icons-material/Menu';
 import ForumIcon from '@mui/icons-material/Forum';
 import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
@@ -44,6 +47,7 @@ import { UserProfile, useUser } from '@auth0/nextjs-auth0/client';
 
 import { useChannel } from 'ably/react';
 import { Message } from "ably";
+import { grey, lightGreen } from "@mui/material/colors";
 
 const drawerWidth = 240;
 
@@ -187,8 +191,15 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
     const [newChannelName, setNewChannelName] = React.useState<string>('');
 
+    const [openSnackbar, setOpenSnackbar] = React.useState<boolean>(false);
+    const [snackbarMessage, setSnackbarMessage] = React.useState<string>('');
+
+    const [linkPopoverOpen, setLinkPopoverOpen] = React.useState<boolean>(false);
+    const [shareLinkEmailAddress, setShareLinkEmailAddress] = React.useState<string>('');
+
     const mainRef = React.useRef<any>(null);
     const textEditorRef = React.useRef<any>(null);
+    const linkRef = React.useRef<HTMLDivElement>(null);
 
     const handleDrawerToggle = () => {
         setOpen(!open);
@@ -196,7 +207,9 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     };
 
     const handleExpandChannels = () => {
-        setExpandChannels(!expandChannels);
+        if (open) {
+            setExpandChannels(!expandChannels);
+        }
     };
 
     // const handleDirectMessages = () => {
@@ -245,6 +258,52 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
     const handleCreateNewChannel = (e: any) => {
         setDialogOpen(false);
         setLocalChannels([...localChannels, newChannelName]);
+        handleSnackbarOpen('Channel Created!');
+        setNewChannelName('');
+    }
+
+    const shareChannelLinkAndCopyToClipBoard = async () => {
+        setLinkPopoverOpen(false);
+        await navigator.clipboard.writeText(window.location.href + `?channel=${activeChannelName}&referrer=${user?.nickname}`);
+        handleSnackbarOpen('Channel link copied to clipboard!');
+        const errorMessage = 'Unable to share link at this moment. The link has been copied to clipboard! Please share the link manually or try again later!';
+        try {
+            const response = await fetch('/api/resend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from: user?.nickname,
+                    to: shareLinkEmailAddress,
+                    channel: activeChannelName,
+                    channelLink: window.location.href + `?channel=${activeChannelName}&referrer=${user?.nickname}`
+                }),
+            });
+
+            if (response.ok) {
+                // Handle success (e.g., clear form, show success message)
+                handleSnackbarOpen(`Link Sent to ${shareLinkEmailAddress}!`);
+                setShareLinkEmailAddress('');
+            } else {
+                console.error('Error sending channel link');
+                // Handle error (e.g., show error message)
+                handleSnackbarOpen(errorMessage);
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            handleSnackbarOpen(errorMessage);
+        }
+    }
+
+    const handleSnackbarOpen = (msg: string) => {
+        setOpenSnackbar(true);
+        setSnackbarMessage(msg);
+    }
+
+    const handleSnackbarClose = () => {
+        setOpenSnackbar(false);
+        setSnackbarMessage('');
     }
 
     React.useEffect(() => {
@@ -254,9 +313,14 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
 
     React.useEffect(() => {
         if (user && user.nickname) {
-            setLocalChannels([...localChannels, user?.nickname])
+            if (localChannels.indexOf(user.nickname) < 0) {
+                setLocalChannels([...localChannels, user?.nickname]);
+            }
         }
-    }, [user])
+        if (localChannels.indexOf(activeChannelName) < 0) {
+            setLocalChannels([...localChannels, activeChannelName]);
+        }
+    }, [user, activeChannelName])
 
     return (
         <>
@@ -391,6 +455,15 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                             <div className="ml-3">
                                 <Typography variant="h6">{activeChannelName}</Typography>
                             </div>
+                            {!isCurrUser(activeChannelName) ? (
+                                <div ref={linkRef} className="ml-auto mr-3">
+                                    <Tooltip title="Share Channel Link">
+                                        <IconButton onClick={e => setLinkPopoverOpen(true)}>
+                                            <Share />
+                                        </IconButton>
+                                    </Tooltip>
+                                </div>
+                            ) : (<></>)}
                         </div>
                     </Toolbar>
                     {/* Messages */}
@@ -402,8 +475,9 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                                         <div>
                                             <Avatar {...stringAvatar(m.user)} />
                                         </div>
-                                        <div className="ml-3">
-                                            <Typography component="div" dangerouslySetInnerHTML={{ __html: m.message }} />
+                                        <div className="ml-3 flex flex-col justify-center items-start">
+                                            <Typography variant="subtitle2">{m.user}</Typography>
+                                            <Typography variant="body1" dangerouslySetInnerHTML={{ __html: m.message }} />
                                         </div>
                                     </div>
                                 </Paper>
@@ -421,7 +495,7 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                 open={dialogOpen}
             >
                 <DialogTitle>Create Channel</DialogTitle>
-                <DialogContent sx={{ width: '50vw' }}>
+                <DialogContent>
                     <DialogContentText>
                         Enter a name for the channel
                     </DialogContentText>
@@ -429,20 +503,57 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
                         autoFocus
                         required
                         margin="dense"
-                        name="email"
+                        name="channelName"
                         label="Channel Name"
                         type="text"
-                        fullWidth
+                        sx={{ width: '400px' }}
                         variant="standard"
                         value={newChannelName}
                         onChange={e => setNewChannelName(e.target.value)}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={e => setDialogOpen(false)}>Cancel</Button>
-                    <Button type="button" onClick={e => handleCreateNewChannel(e)}>Create</Button>
+                    <Button variant="outlined" onClick={e => setDialogOpen(false)}>Cancel</Button>
+                    <Button variant="contained" type="button" onClick={e => handleCreateNewChannel(e)}>Create</Button>
                 </DialogActions>
             </Dialog>
+
+            <Popover
+                open={linkPopoverOpen}
+                anchorEl={linkRef.current}
+                onClose={e => setLinkPopoverOpen(false)}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'left',
+                }}
+            >
+                <div className="flex flex-col justify-center items-start px-6 py-8 w-[400px]">
+                    <Typography variant="h6" component="h6">Share Channel Link</Typography>
+                    <TextField
+                        autoFocus
+                        required
+                        margin="dense"
+                        name="email"
+                        label="Enter Email Address"
+                        type="email"
+                        fullWidth
+                        variant="standard"
+                        value={shareLinkEmailAddress}
+                        onChange={e => setShareLinkEmailAddress(e.target.value)}
+                    />
+                    <Button variant="contained" type="button" onClick={shareChannelLinkAndCopyToClipBoard}>Send</Button>
+                </div>
+
+            </Popover>
+
+            <Snackbar
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                open={openSnackbar}
+                onClose={handleSnackbarClose}
+                autoHideDuration={3000}
+            >
+                <SnackbarContent style={{ backgroundColor: lightGreen[200], color: grey[900] }} message={snackbarMessage} />
+            </Snackbar>
         </>
     );
 }
