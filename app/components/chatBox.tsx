@@ -272,6 +272,8 @@ const ChatBox = ({ user, activeChannelName, updateActiveChannel }:
             let host = '';
             if (window.location.href.indexOf('?') >= 0) {
                 host = window.location.href.split('?')[0];
+            } else {
+                host = window.location.href;
             }
             await navigator.clipboard.writeText(host + `?channel=${activeChannelName}&referrer=${user?.nickname}`);
             handleSnackbarOpen('Channel link copied to clipboard!');
