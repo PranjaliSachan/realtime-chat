@@ -59,13 +59,13 @@ const RichTextEditor = ({ onUpdate }: any) => {
         <>
             <div className="w-full flex flex-col justify-items-center items-start border border-zinc-200 rounded-xl">
                 <div className="w-full px-4 py-2 flex flex-row justify-items-start items-center border-b border-b-zinc-200">
-                    <Tooltip title="Bold">
+                    <Tooltip title="Bold: Ctrl + b (Windows),Command + b (MacOS)">
                         <FormatBoldIcon ref={boldButtonRef} sx={{ width: 24, height: 24, borderRadius: 1, mx: 1 }} />
                     </Tooltip>
-                    <Tooltip title="Italic">
+                    <Tooltip title="Italic: Ctrl + i (Windows),Command + i (MacOS)">
                         <FormatItalicIcon ref={italicButtonRef} sx={{ width: 24, height: 24, borderRadius: 1, mx: 1 }} />
                     </Tooltip>
-                    <Tooltip title="Underline">
+                    <Tooltip title="Underline: Ctrl + u (Windows),Command + u (MacOS)">
                         <FormatUnderlinedIcon ref={underlineButtonRef} sx={{ width: 24, height: 24, borderRadius: 1, mx: 1 }} />
                     </Tooltip>
                 </div>
